@@ -6,8 +6,9 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
+    startCommand: |
       python manage.py migrate
-    startCommand: gunicorn inventory_backend.wsgi:application
+      gunicorn inventory_backend.wsgi:application
     envVars:
       - key: DJANGO_DEBUG
         value: "false"
