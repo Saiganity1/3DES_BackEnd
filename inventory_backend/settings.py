@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     'corsheaders',
 
     # Local
-    'inventory',
+    'inventory.apps.InventoryConfig',
 ]
 
 MIDDLEWARE = [
