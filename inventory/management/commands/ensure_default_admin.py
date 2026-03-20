@@ -2,6 +2,7 @@ import os
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.db.utils import OperationalError
 
 
 class Command(BaseCommand):
@@ -16,25 +17,21 @@ class Command(BaseCommand):
         password = os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin123")
 
         User = get_user_model()
-        user, created = User.objects.get_or_create(username=username)
+        try:
+            user, created = User.objects.get_or_create(username=username)
+        except OperationalError:
+            self.stdout.write("Database not migrated yet; run 'python manage.py migrate' first.")
+            return
+
+        # Always ensure this account can be used to log in.
+        # NOTE: This will reset the password on every deploy/start unless you override
+        # DEFAULT_ADMIN_PASSWORD or disable via DISABLE_DEFAULT_ADMIN.
+        user.is_staff = True
+        user.is_superuser = True
+        user.set_password(password)
+        user.save(update_fields=["is_staff", "is_superuser", "password"])
 
         if created:
-            user.is_staff = True
-            user.is_superuser = True
-            user.set_password(password)
-            user.save(update_fields=["is_staff", "is_superuser", "password"])
             self.stdout.write(f"Created default admin user: {username}")
         else:
-            # Ensure it stays admin-capable.
-            changed = False
-            if not user.is_staff:
-                user.is_staff = True
-                changed = True
-            if not user.is_superuser:
-                user.is_superuser = True
-                changed = True
-            if changed:
-                user.save(update_fields=["is_staff", "is_superuser"])
-                self.stdout.write(f"Updated existing user to admin: {username}")
-            else:
-                self.stdout.write(f"Default admin user already exists: {username}")
+            self.stdout.write(f"Updated default admin user (password/flags ensured): {username}")
