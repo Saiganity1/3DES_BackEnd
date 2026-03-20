@@ -24,6 +24,7 @@ from django.urls import include, path
 def _root_status(_request):
     disabled = os.getenv("DISABLE_DEFAULT_ADMIN", "false").lower() == "true"
     username = os.getenv("DEFAULT_ADMIN_USERNAME", "Admin")
+    password_configured = bool(os.getenv("DEFAULT_ADMIN_PASSWORD"))
     git_commit = os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT")
     return JsonResponse(
         {
@@ -33,6 +34,7 @@ def _root_status(_request):
             "default_admin": {
                 "disabled": disabled,
                 "username": username,
+                "password_configured": password_configured,
             },
         }
     )
