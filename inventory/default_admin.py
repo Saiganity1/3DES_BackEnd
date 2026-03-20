@@ -31,10 +31,11 @@ def ensure_default_admin() -> str:
     except OperationalError:
         return "Database not migrated yet; run migrations first."
 
+    user.is_active = True
     user.is_staff = True
     user.is_superuser = True
     user.set_password(password)
-    user.save(update_fields=["is_staff", "is_superuser", "password"])
+    user.save(update_fields=["is_active", "is_staff", "is_superuser", "password"])
 
     if created:
         return f"Created default admin user: {username}"
