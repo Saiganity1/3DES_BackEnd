@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 from rest_framework import status, viewsets
@@ -7,8 +8,34 @@ from rest_framework.response import Response
 from inventory.models import Category, Item
 from rest_framework.permissions import IsAdminUser
 
-from inventory.permissions import StaffWriteOtherwiseReadOnly
-from inventory.serializers import CategorySerializer, ItemSerializer
+from inventory.permissions import IsSuperUser, StaffWriteOtherwiseReadOnly
+from inventory.serializers import AccountSerializer, CategorySerializer, ItemSerializer
+
+
+class AccountViewSet(viewsets.ReadOnlyModelViewSet):
+	queryset = User.objects.all().order_by("id")
+	serializer_class = AccountSerializer
+	permission_classes = [IsSuperUser]
+
+	@action(detail=True, methods=["post"], url_path="promote")
+	def promote(self, request, pk=None):
+		user = self.get_object()
+		if user.is_superuser:
+			return Response({"detail": "Cannot modify a superuser."}, status=status.HTTP_400_BAD_REQUEST)
+		user.is_staff = True
+		user.save(update_fields=["is_staff"])
+		return Response(self.get_serializer(user).data)
+
+	@action(detail=True, methods=["post"], url_path="take_down")
+	def take_down(self, request, pk=None):
+		user = self.get_object()
+		if user.pk == request.user.pk:
+			return Response({"detail": "You cannot take down your own account."}, status=status.HTTP_400_BAD_REQUEST)
+		if user.is_superuser:
+			return Response({"detail": "Cannot take down a superuser."}, status=status.HTTP_400_BAD_REQUEST)
+		user.is_active = False
+		user.save(update_fields=["is_active"])
+		return Response(self.get_serializer(user).data)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):

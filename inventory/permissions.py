@@ -8,3 +8,10 @@ class StaffWriteOtherwiseReadOnly(BasePermission):
         if request.method in SAFE_METHODS:
             return bool(request.user and request.user.is_authenticated)
         return bool(request.user and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser))
+
+
+class IsSuperUser(BasePermission):
+    """Allow only authenticated superusers."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)

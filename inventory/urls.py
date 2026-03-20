@@ -3,9 +3,10 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from inventory.auth_views import MeView, RegisterView
-from inventory.views import CategoryViewSet, ItemViewSet
+from inventory.views import AccountViewSet, CategoryViewSet, ItemViewSet
 
 router = DefaultRouter()
+router.register(r"accounts", AccountViewSet, basename="account")
 router.register(r"categories", CategoryViewSet, basename="category")
 router.register(r"items", ItemViewSet, basename="item")
 
