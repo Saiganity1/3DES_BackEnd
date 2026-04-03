@@ -55,6 +55,9 @@ class Item(models.Model):
 
 	class Meta:
 		ordering = ["name", "id"]
+		permissions = [
+			("can_decrypt_item_details", "Can decrypt item details"),
+		]
 
 	def __str__(self) -> str:
 		return f"{self.name} ({self.category.name})"

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission
 from django.utils import timezone
 
 from rest_framework import status, viewsets
@@ -35,6 +36,30 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 			return Response({"detail": "Cannot take down a superuser."}, status=status.HTTP_400_BAD_REQUEST)
 		user.is_active = False
 		user.save(update_fields=["is_active"])
+		return Response(self.get_serializer(user).data)
+
+	def _get_decrypt_permission(self):
+		return Permission.objects.get(
+			codename="can_decrypt_item_details",
+			content_type__app_label="inventory",
+		)
+
+	@action(detail=True, methods=["post"], url_path="grant_decrypt")
+	def grant_decrypt(self, request, pk=None):
+		user = self.get_object()
+		if user.is_superuser:
+			return Response({"detail": "Cannot modify a superuser."}, status=status.HTTP_400_BAD_REQUEST)
+		perm = self._get_decrypt_permission()
+		user.user_permissions.add(perm)
+		return Response(self.get_serializer(user).data)
+
+	@action(detail=True, methods=["post"], url_path="revoke_decrypt")
+	def revoke_decrypt(self, request, pk=None):
+		user = self.get_object()
+		if user.is_superuser:
+			return Response({"detail": "Cannot modify a superuser."}, status=status.HTTP_400_BAD_REQUEST)
+		perm = self._get_decrypt_permission()
+		user.user_permissions.remove(perm)
 		return Response(self.get_serializer(user).data)
 
 

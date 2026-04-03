@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission
 
 from rest_framework.test import APITestCase
 
@@ -37,3 +38,35 @@ class ViewerPermissionsTests(APITestCase):
 		names = {i["name"] for i in res.json()}
 		self.assertIn("Staff Item", names)
 		self.assertNotIn("Viewer Item", names)
+
+	def test_admin_can_grant_viewer_decrypt_permission(self):
+		# Create an item with sensitive fields.
+		it = Item.objects.create(category=self.category, name="Secret", quantity=1, created_by=self.admin)
+		it.location = "Lab 1"
+		it.serial_number = "SN-123"
+		it.notes = "Top secret"
+		it.save()
+
+		# Viewer initially sees ciphertext, not plaintext.
+		self.client.force_authenticate(user=self.viewer)
+		res1 = self.client.get("/api/items/")
+		self.assertEqual(res1.status_code, 200)
+		secret = [x for x in res1.json() if x["name"] == "Secret"][0]
+		self.assertNotEqual(secret["location"], "Lab 1")
+		self.assertNotEqual(secret["serial_number"], "SN-123")
+		self.assertNotEqual(secret["notes"], "Top secret")
+
+		# Admin grants decrypt permission.
+		perm = Permission.objects.get(codename="can_decrypt_item_details", content_type__app_label="inventory")
+		self.viewer.user_permissions.add(perm)
+		# Refresh auth user to avoid permission cache.
+		self.viewer = User.objects.get(pk=self.viewer.pk)
+		self.client.force_authenticate(user=self.viewer)
+
+		# Viewer now sees plaintext.
+		res2 = self.client.get("/api/items/")
+		self.assertEqual(res2.status_code, 200)
+		secret2 = [x for x in res2.json() if x["name"] == "Secret"][0]
+		self.assertEqual(secret2["location"], "Lab 1")
+		self.assertEqual(secret2["serial_number"], "SN-123")
+		self.assertEqual(secret2["notes"], "Top secret")

@@ -47,14 +47,21 @@ class ItemSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = getattr(request, "user", None)
 
-        can_view_sensitive = bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
-        if not can_view_sensitive:
-            # Viewer sees encrypted strings (ciphertext), not plaintext.
+        is_staff_like = bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+        can_decrypt = bool(
+            user
+            and user.is_authenticated
+            and (is_staff_like or user.has_perm("inventory.can_decrypt_item_details"))
+        )
+
+        if not can_decrypt:
+            # No decrypt permission: return ciphertext.
             data["location"] = instance.location_encrypted or ""
             data["serial_number"] = instance.serial_number_encrypted or ""
             data["notes"] = instance.notes_encrypted or ""
 
-            # Viewer also should not browse categories.
+        if not is_staff_like:
+            # Non-staff should not browse category IDs.
             data["category"] = None
         return data
 
@@ -88,6 +95,8 @@ class ItemSerializer(serializers.ModelSerializer):
 
 
 class AccountSerializer(serializers.ModelSerializer):
+    can_decrypt_item_details = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -99,6 +108,13 @@ class AccountSerializer(serializers.ModelSerializer):
             "is_active",
             "is_staff",
             "is_superuser",
+            "can_decrypt_item_details",
             "date_joined",
             "last_login",
         ]
+
+    def get_can_decrypt_item_details(self, obj):
+        try:
+            return bool(obj.has_perm("inventory.can_decrypt_item_details"))
+        except Exception:
+            return False

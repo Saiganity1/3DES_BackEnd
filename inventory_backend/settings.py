@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 
@@ -117,10 +118,40 @@ DATABASES = {
 # Render / production: prefer DATABASE_URL if provided (typically Postgres)
 _database_url = os.getenv("DATABASE_URL", "").strip()
 if _database_url and dj_database_url is not None:
+    _parsed_db_url = urlparse(_database_url)
+    _db_host = (_parsed_db_url.hostname or "").lower()
+    _db_scheme = (_parsed_db_url.scheme or "").lower()
+    _db_query = parse_qs(_parsed_db_url.query)
+
+    _is_postgres = _db_scheme in {"postgres", "postgresql"}
+    _is_supabase = "supabase" in _db_host
+    _is_supabase_pooler = (
+        _parsed_db_url.port == 6543
+        or "pooler.supabase.com" in _db_host
+    )
+
+    # Supabase poolers (especially transaction poolers) don't work well with
+    # long-lived connections. Default to 0 unless explicitly overridden.
+    _conn_max_age_env = os.getenv("CONN_MAX_AGE")
+    if _conn_max_age_env is not None and _conn_max_age_env.strip() != "":
+        _conn_max_age = int(_conn_max_age_env)
+    else:
+        _conn_max_age = 0 if _is_supabase_pooler else 600
+
     DATABASES["default"] = dj_database_url.config(
         default=_database_url,
-        conn_max_age=int(os.getenv("CONN_MAX_AGE", "600")),
+        conn_max_age=_conn_max_age,
     )
+
+    # Supabase requires SSL. If sslmode isn't provided in the URL, default to
+    # require for Supabase hosts (or honor DB_SSLMODE when set).
+    if _is_postgres:
+        _url_sslmode = (_db_query.get("sslmode") or [None])[0]
+        _env_sslmode = os.getenv("DB_SSLMODE", "").strip() or None
+        _effective_sslmode = _url_sslmode or _env_sslmode or ("require" if _is_supabase else None)
+        if _effective_sslmode:
+            DATABASES["default"].setdefault("OPTIONS", {})
+            DATABASES["default"]["OPTIONS"].setdefault("sslmode", _effective_sslmode)
 
 
 # Password validation
