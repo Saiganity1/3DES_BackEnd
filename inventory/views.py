@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from inventory.models import Category, Item
 from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 
 from inventory.permissions import IsSuperUser, StaffWriteOtherwiseReadOnly
 from inventory.serializers import AccountSerializer, CategorySerializer, ItemSerializer
@@ -91,6 +92,17 @@ class ItemViewSet(viewsets.ModelViewSet):
 
 	def perform_create(self, serializer):
 		serializer.save(created_by=self.request.user)
+
+	@action(detail=True, methods=["get"], url_path="decrypt", permission_classes=[IsAuthenticated])
+	def decrypt(self, request, pk=None):
+		item = self.get_object()
+		user = request.user
+		can_decrypt = bool(user and user.is_authenticated and (user.is_staff or user.is_superuser or user.has_perm("inventory.can_decrypt_item_details")))
+		if not can_decrypt:
+			return Response({"detail": "You do not have permission to decrypt item details."}, status=status.HTTP_403_FORBIDDEN)
+
+		serializer = self.get_serializer(item, context={**self.get_serializer_context(), "force_decrypt_sensitive": True})
+		return Response(serializer.data)
 
 	@action(detail=False, methods=["get"], url_path="archived", permission_classes=[IsAdminUser])
 	def archived(self, request):

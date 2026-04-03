@@ -22,6 +22,23 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
+    can_decrypt_item_details = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "email", "is_staff", "is_superuser"]
+        fields = [
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "is_staff",
+            "is_superuser",
+            "can_decrypt_item_details",
+        ]
+
+    def get_can_decrypt_item_details(self, obj):
+        try:
+            return bool(obj.has_perm("inventory.can_decrypt_item_details"))
+        except Exception:
+            return False

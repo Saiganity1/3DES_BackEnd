@@ -48,14 +48,16 @@ class ItemSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
 
         is_staff_like = bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+        force_decrypt = bool(self.context.get("force_decrypt_sensitive"))
         can_decrypt = bool(
             user
             and user.is_authenticated
             and (is_staff_like or user.has_perm("inventory.can_decrypt_item_details"))
         )
 
-        if not can_decrypt:
-            # No decrypt permission: return ciphertext.
+        # Default: only staff/admin see plaintext. Approved users can request
+        # plaintext via the explicit decrypt endpoint.
+        if not is_staff_like and not (force_decrypt and can_decrypt):
             data["location"] = instance.location_encrypted or ""
             data["serial_number"] = instance.serial_number_encrypted or ""
             data["notes"] = instance.notes_encrypted or ""

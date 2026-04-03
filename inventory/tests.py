@@ -63,10 +63,18 @@ class ViewerPermissionsTests(APITestCase):
 		self.viewer = User.objects.get(pk=self.viewer.pk)
 		self.client.force_authenticate(user=self.viewer)
 
-		# Viewer now sees plaintext.
+		# Viewer list remains ciphertext by default.
 		res2 = self.client.get("/api/items/")
 		self.assertEqual(res2.status_code, 200)
 		secret2 = [x for x in res2.json() if x["name"] == "Secret"][0]
-		self.assertEqual(secret2["location"], "Lab 1")
-		self.assertEqual(secret2["serial_number"], "SN-123")
-		self.assertEqual(secret2["notes"], "Top secret")
+		self.assertNotEqual(secret2["location"], "Lab 1")
+		self.assertNotEqual(secret2["serial_number"], "SN-123")
+		self.assertNotEqual(secret2["notes"], "Top secret")
+
+		# Viewer can explicitly request decryption.
+		res3 = self.client.get(f"/api/items/{it.id}/decrypt/")
+		self.assertEqual(res3.status_code, 200)
+		data3 = res3.json()
+		self.assertEqual(data3["location"], "Lab 1")
+		self.assertEqual(data3["serial_number"], "SN-123")
+		self.assertEqual(data3["notes"], "Top secret")
