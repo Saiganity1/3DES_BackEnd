@@ -32,15 +32,19 @@ load_dotenv(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Render: set SECRET_KEY in environment variables.
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "django-insecure-o3ozzyyf4mz$=7)1@9dp3(r!=o43wzgomv%3j5zahwd7n*8d6j",
-)
+_debug_env = os.getenv("DJANGO_DEBUG", "true").strip().lower()
+DEBUG = _debug_env == "true"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
+_secret_key_env = os.getenv("SECRET_KEY", "").strip()
+if _secret_key_env:
+    SECRET_KEY = _secret_key_env
+else:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-o3ozzyyf4mz$=7)1@9dp3(r!=o43wzgomv%3j5zahwd7n*8d6j"
+    else:
+        raise RuntimeError(
+            "SECRET_KEY must be set when DJANGO_DEBUG is false (production)."
+        )
 
 _allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "").strip()
 if _allowed_hosts_env:
@@ -51,6 +55,20 @@ else:
         "127.0.0.1",
         "0.0.0.0",
     ]
+
+
+# Security hardening for production (Render sets DJANGO_DEBUG=false)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").strip().lower() == "true"
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # HSTS: safe default for HTTPS-only deployments.
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 
 # Application definition
