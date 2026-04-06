@@ -4,6 +4,7 @@ from django.contrib.auth.models import Permission
 from rest_framework.test import APITestCase
 
 from inventory.models import Category, Item
+from inventory.models import ActivityLog
 
 
 class ViewerPermissionsTests(APITestCase):
@@ -90,12 +91,22 @@ class ItemAuditFieldsTests(APITestCase):
 		self.client.force_authenticate(user=self.staff1)
 		res_create = self.client.post(
 			"/api/items/",
-			{"name": "Audit Item", "quantity": 1, "category": self.category.id, "location": "Lab"},
+			{
+				"name": "Audit Item",
+				"quantity": 1,
+				"min_quantity": 2,
+				"photo_url": "https://example.com/photo.jpg",
+				"category": self.category.id,
+				"location": "Lab",
+			},
 			format="json",
 		)
 		self.assertEqual(res_create.status_code, 201)
 		item_id = res_create.json()["id"]
 		self.assertEqual(res_create.json().get("updated_by"), "staff_one")
+		self.assertEqual(res_create.json().get("min_quantity"), 2)
+		self.assertEqual(res_create.json().get("photo_url"), "https://example.com/photo.jpg")
+		self.assertTrue(ActivityLog.objects.filter(action=ActivityLog.ACTION_ITEM_CREATED, item_id=item_id).exists())
 
 		self.client.force_authenticate(user=self.staff2)
 		res_patch = self.client.patch(
@@ -105,3 +116,4 @@ class ItemAuditFieldsTests(APITestCase):
 		)
 		self.assertEqual(res_patch.status_code, 200)
 		self.assertEqual(res_patch.json().get("updated_by"), "staff_two")
+		self.assertTrue(ActivityLog.objects.filter(action=ActivityLog.ACTION_ITEM_UPDATED, item_id=item_id).exists())

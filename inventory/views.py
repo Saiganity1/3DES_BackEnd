@@ -6,12 +6,20 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from inventory.models import Category, Item
+from inventory.models import ActivityLog, Category, Item
 from rest_framework.permissions import IsAdminUser
 from rest_framework.permissions import IsAuthenticated
 
 from inventory.permissions import IsSuperUser, StaffWriteOtherwiseReadOnly
-from inventory.serializers import AccountSerializer, CategorySerializer, ItemSerializer
+from inventory.serializers import AccountSerializer, ActivityLogSerializer, CategorySerializer, ItemSerializer
+
+
+def _log_activity(*, actor, action, item=None, message=""):
+	try:
+		ActivityLog.objects.create(actor=actor, action=action, item=item, message=message)
+	except Exception:
+		# Never break the main request due to audit logging.
+		return
 
 
 class AccountViewSet(viewsets.ReadOnlyModelViewSet):
@@ -26,6 +34,7 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 			return Response({"detail": "Cannot modify a superuser."}, status=status.HTTP_400_BAD_REQUEST)
 		user.is_staff = True
 		user.save(update_fields=["is_staff"])
+		_log_activity(actor=request.user, action=ActivityLog.ACTION_ACCOUNT_PROMOTED, message=f"Promoted {user.username} to staff")
 		return Response(self.get_serializer(user).data)
 
 	@action(detail=True, methods=["post"], url_path="take_down")
@@ -37,6 +46,7 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 			return Response({"detail": "Cannot take down a superuser."}, status=status.HTTP_400_BAD_REQUEST)
 		user.is_active = False
 		user.save(update_fields=["is_active"])
+		_log_activity(actor=request.user, action=ActivityLog.ACTION_ACCOUNT_TAKEDOWN, message=f"Took down account {user.username}")
 		return Response(self.get_serializer(user).data)
 
 	def _get_decrypt_permission(self):
@@ -52,6 +62,7 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 			return Response({"detail": "Cannot modify a superuser."}, status=status.HTTP_400_BAD_REQUEST)
 		perm = self._get_decrypt_permission()
 		user.user_permissions.add(perm)
+		_log_activity(actor=request.user, action=ActivityLog.ACTION_DECRYPT_GRANTED, message=f"Granted decrypt permission to {user.username}")
 		return Response(self.get_serializer(user).data)
 
 	@action(detail=True, methods=["post"], url_path="revoke_decrypt")
@@ -61,6 +72,7 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 			return Response({"detail": "Cannot modify a superuser."}, status=status.HTTP_400_BAD_REQUEST)
 		perm = self._get_decrypt_permission()
 		user.user_permissions.remove(perm)
+		_log_activity(actor=request.user, action=ActivityLog.ACTION_DECRYPT_REVOKED, message=f"Revoked decrypt permission from {user.username}")
 		return Response(self.get_serializer(user).data)
 
 
@@ -72,7 +84,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
 	permission_classes = [IsAdminUser]
 
 	def perform_create(self, serializer):
-		serializer.save(created_by=self.request.user)
+		cat = serializer.save(created_by=self.request.user)
+		_log_activity(actor=self.request.user, action=ActivityLog.ACTION_CATEGORY_CREATED, message=f"Created category {cat.name}")
 
 
 class ItemViewSet(viewsets.ModelViewSet):
@@ -91,10 +104,12 @@ class ItemViewSet(viewsets.ModelViewSet):
 		return base.filter(created_by__is_staff=True, is_archived=False)
 
 	def perform_create(self, serializer):
-		serializer.save(created_by=self.request.user, updated_by=self.request.user)
+		item = serializer.save(created_by=self.request.user, updated_by=self.request.user)
+		_log_activity(actor=self.request.user, action=ActivityLog.ACTION_ITEM_CREATED, item=item, message=f"Created item {item.name}")
 
 	def perform_update(self, serializer):
-		serializer.save(updated_by=self.request.user)
+		item = serializer.save(updated_by=self.request.user)
+		_log_activity(actor=self.request.user, action=ActivityLog.ACTION_ITEM_UPDATED, item=item, message=f"Updated item {item.name}")
 
 	@action(detail=True, methods=["get"], url_path="decrypt", permission_classes=[IsAuthenticated])
 	def decrypt(self, request, pk=None):
@@ -132,6 +147,7 @@ class ItemViewSet(viewsets.ModelViewSet):
 		item.archived_by = None
 		item.updated_by = request.user
 		item.save(update_fields=["is_archived", "archived_at", "archived_by", "updated_at", "updated_by"])
+		_log_activity(actor=request.user, action=ActivityLog.ACTION_ITEM_RESTORED, item=item, message=f"Restored item {item.name}")
 		serializer = self.get_serializer(item)
 		return Response(serializer.data)
 
@@ -145,4 +161,11 @@ class ItemViewSet(viewsets.ModelViewSet):
 		item.archived_by = request.user
 		item.updated_by = request.user
 		item.save(update_fields=["is_archived", "archived_at", "archived_by", "updated_at", "updated_by"])
+		_log_activity(actor=request.user, action=ActivityLog.ACTION_ITEM_ARCHIVED, item=item, message=f"Archived item {item.name}")
 		return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
+	queryset = ActivityLog.objects.select_related("actor", "item")
+	serializer_class = ActivityLogSerializer
+	permission_classes = [IsAdminUser]

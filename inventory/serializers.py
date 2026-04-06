@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from django.contrib.auth.models import User
 
-from inventory.models import Category, Item
+from inventory.models import ActivityLog, Category, Item
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -36,6 +36,8 @@ class ItemSerializer(serializers.ModelSerializer):
             "archived_by",
             "name",
             "quantity",
+            "min_quantity",
+            "photo_url",
             "location",
             "serial_number",
             "notes",
@@ -122,3 +124,12 @@ class AccountSerializer(serializers.ModelSerializer):
             return bool(obj.has_perm("inventory.can_decrypt_item_details"))
         except Exception:
             return False
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    actor = serializers.CharField(source="actor.username", read_only=True)
+    item_name = serializers.CharField(source="item.name", read_only=True)
+
+    class Meta:
+        model = ActivityLog
+        fields = ["id", "created_at", "actor", "action", "item", "item_name", "message"]
