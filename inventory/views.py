@@ -84,14 +84,17 @@ class ItemViewSet(viewsets.ModelViewSet):
 
 	def get_queryset(self):
 		user = self.request.user
-		base = Item.objects.select_related("category", "created_by", "archived_by")
+		base = Item.objects.select_related("category", "created_by", "archived_by", "updated_by")
 		if user.is_staff or user.is_superuser:
 			return base.filter(is_archived=False)
 		# Viewer: only inventory posted by staff
 		return base.filter(created_by__is_staff=True, is_archived=False)
 
 	def perform_create(self, serializer):
-		serializer.save(created_by=self.request.user)
+		serializer.save(created_by=self.request.user, updated_by=self.request.user)
+
+	def perform_update(self, serializer):
+		serializer.save(updated_by=self.request.user)
 
 	@action(detail=True, methods=["get"], url_path="decrypt", permission_classes=[IsAuthenticated])
 	def decrypt(self, request, pk=None):
@@ -106,7 +109,7 @@ class ItemViewSet(viewsets.ModelViewSet):
 
 	@action(detail=False, methods=["get"], url_path="archived", permission_classes=[IsAdminUser])
 	def archived(self, request):
-		qs = Item.objects.select_related("category", "created_by", "archived_by").filter(is_archived=True)
+		qs = Item.objects.select_related("category", "created_by", "archived_by", "updated_by").filter(is_archived=True)
 		page = self.paginate_queryset(qs)
 		if page is not None:
 			serializer = self.get_serializer(page, many=True)
@@ -127,7 +130,8 @@ class ItemViewSet(viewsets.ModelViewSet):
 		item.is_archived = False
 		item.archived_at = None
 		item.archived_by = None
-		item.save(update_fields=["is_archived", "archived_at", "archived_by", "updated_at"])
+		item.updated_by = request.user
+		item.save(update_fields=["is_archived", "archived_at", "archived_by", "updated_at", "updated_by"])
 		serializer = self.get_serializer(item)
 		return Response(serializer.data)
 
@@ -139,5 +143,6 @@ class ItemViewSet(viewsets.ModelViewSet):
 		item.is_archived = True
 		item.archived_at = timezone.now()
 		item.archived_by = request.user
-		item.save(update_fields=["is_archived", "archived_at", "archived_by", "updated_at"])
+		item.updated_by = request.user
+		item.save(update_fields=["is_archived", "archived_at", "archived_by", "updated_at", "updated_by"])
 		return Response(status=status.HTTP_204_NO_CONTENT)

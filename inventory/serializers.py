@@ -17,6 +17,7 @@ class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     created_by = serializers.CharField(source="created_by.username", read_only=True)
     archived_by = serializers.CharField(source="archived_by.username", read_only=True)
+    updated_by = serializers.CharField(source="updated_by.username", read_only=True)
 
     # Plaintext fields exposed via model properties (encrypted at rest)
     location = serializers.CharField(required=False, allow_blank=True)
@@ -40,6 +41,7 @@ class ItemSerializer(serializers.ModelSerializer):
             "notes",
             "created_at",
             "updated_at",
+            "updated_by",
         ]
 
     def to_representation(self, instance):

@@ -78,3 +78,30 @@ class ViewerPermissionsTests(APITestCase):
 		self.assertEqual(data3["location"], "Lab 1")
 		self.assertEqual(data3["serial_number"], "SN-123")
 		self.assertEqual(data3["notes"], "Top secret")
+
+
+class ItemAuditFieldsTests(APITestCase):
+	def setUp(self):
+		self.category = Category.objects.create(name="Audit Category")
+		self.staff1 = User.objects.create_user(username="staff_one", password="pass12345", is_staff=True)
+		self.staff2 = User.objects.create_user(username="staff_two", password="pass12345", is_staff=True)
+
+	def test_updated_by_tracks_last_editor(self):
+		self.client.force_authenticate(user=self.staff1)
+		res_create = self.client.post(
+			"/api/items/",
+			{"name": "Audit Item", "quantity": 1, "category": self.category.id, "location": "Lab"},
+			format="json",
+		)
+		self.assertEqual(res_create.status_code, 201)
+		item_id = res_create.json()["id"]
+		self.assertEqual(res_create.json().get("updated_by"), "staff_one")
+
+		self.client.force_authenticate(user=self.staff2)
+		res_patch = self.client.patch(
+			f"/api/items/{item_id}/",
+			{"name": "Audit Item Updated"},
+			format="json",
+		)
+		self.assertEqual(res_patch.status_code, 200)
+		self.assertEqual(res_patch.json().get("updated_by"), "staff_two")
