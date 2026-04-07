@@ -1,3 +1,13 @@
+"""3DES encryption helpers.
+
+Presentation notes:
+- Items store ciphertext in the DB; these helpers convert plaintext <-> base64(iv+ciphertext).
+- Uses CBC mode + PKCS7 padding.
+
+Key note:
+- The 24-byte key is provided via `INVENTORY_3DES_KEY_B64`.
+"""
+
 import base64
 import os
 from dataclasses import dataclass

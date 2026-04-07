@@ -1,3 +1,10 @@
+"""Django admin configuration.
+
+Presentation notes:
+- Registers core models in the Django admin site.
+- Provides quick search/list columns for demos and debugging.
+"""
+
 from django.contrib import admin
 
 from inventory.models import Category, Item

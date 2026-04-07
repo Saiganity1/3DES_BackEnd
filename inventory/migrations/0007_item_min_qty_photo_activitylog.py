@@ -1,3 +1,8 @@
+"""Migration that adds min_quantity/photo_url fields and the ActivityLog table.
+
+Presentation note: migrations describe schema changes executed by Django.
+"""
+
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion

@@ -1,3 +1,10 @@
+"""Authentication serializers.
+
+Presentation notes:
+- `RegisterSerializer` validates user signup fields.
+- `MeSerializer` exposes a safe subset of user fields to the frontend.
+"""
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
 

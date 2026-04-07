@@ -1,3 +1,10 @@
+"""inventory app URL routing.
+
+Presentation notes:
+- Registers ViewSets under `/api/` using a DRF router.
+- Auth endpoints are mounted under `/api/auth/...`.
+"""
+
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView

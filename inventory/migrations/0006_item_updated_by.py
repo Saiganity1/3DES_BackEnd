@@ -1,3 +1,8 @@
+"""Migration that adds `updated_by` tracking to Item.
+
+Presentation note: migrations describe schema changes executed by Django.
+"""
+
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion

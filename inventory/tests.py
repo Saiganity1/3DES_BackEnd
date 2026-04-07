@@ -1,3 +1,12 @@
+"""API tests for the inventory system.
+
+Presentation notes:
+- These tests demonstrate the most important security/role requirements:
+	- Viewers are read-only and only see staff-posted items.
+	- Decryption requires a specific permission and is only available via /decrypt/.
+	- Audit fields and activity logs are recorded.
+"""
+
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
 

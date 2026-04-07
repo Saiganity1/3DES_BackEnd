@@ -1,3 +1,10 @@
+"""Management command: generate a 3DES key.
+
+Presentation notes:
+- Prints a base64-encoded 24-byte key for INVENTORY_3DES_KEY_B64.
+- Used during local setup and demos.
+"""
+
 import base64
 
 from Crypto.Random import get_random_bytes

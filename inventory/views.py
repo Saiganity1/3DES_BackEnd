@@ -1,3 +1,14 @@
+"""REST API endpoints (DRF ViewSets).
+
+Presentation notes:
+- This file wires together CRUD behavior, filtering, and role enforcement.
+- It also emits audit log entries (ActivityLog) for admin review.
+
+Security notes:
+- Items contain encrypted-at-rest fields; we do NOT return decrypted values by default.
+- Decryption is only available via `GET /api/items/{id}/decrypt/` and is permission-gated.
+"""
+
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
 from django.utils import timezone
@@ -18,7 +29,7 @@ def _log_activity(*, actor, action, item=None, message=""):
 	try:
 		ActivityLog.objects.create(actor=actor, action=action, item=item, message=message)
 	except Exception:
-		# Never break the main request due to audit logging.
+		# Presentation note: audit logging must never break the main request.
 		return
 
 
@@ -115,6 +126,9 @@ class ItemViewSet(viewsets.ModelViewSet):
 	def decrypt(self, request, pk=None):
 		item = self.get_object()
 		user = request.user
+		# Permission gate:
+		# - Staff/Admin can decrypt (operational need)
+		# - Viewers must be explicitly granted `inventory.can_decrypt_item_details`
 		can_decrypt = bool(user and user.is_authenticated and (user.is_staff or user.is_superuser or user.has_perm("inventory.can_decrypt_item_details")))
 		if not can_decrypt:
 			return Response({"detail": "You do not have permission to decrypt item details."}, status=status.HTTP_403_FORBIDDEN)

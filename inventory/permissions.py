@@ -1,3 +1,10 @@
+"""Permission classes used by the Django REST API.
+
+Presentation notes:
+- The backend is the source of truth for authorization.
+- The frontend may hide buttons, but the server still enforces rules here.
+"""
+
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 

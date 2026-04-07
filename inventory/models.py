@@ -1,3 +1,15 @@
+"""Database models for the inventory system.
+
+Presentation notes:
+- `Category`: grouping for inventory items.
+- `Item`: main inventory record. Some fields are encrypted-at-rest.
+- `ActivityLog`: audit trail for admin visibility.
+
+Security notes:
+- `location_encrypted`, `serial_number_encrypted`, `notes_encrypted` store ciphertext.
+- Properties (`location`, `serial_number`, `notes`) decrypt/encrypt via the 3DES helpers.
+"""
+
 from django.db import models
 
 from django.conf import settings

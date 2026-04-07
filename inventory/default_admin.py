@@ -1,3 +1,10 @@
+"""Default admin bootstrap.
+
+Presentation notes:
+- Creates/updates a default admin account for demos/school use.
+- Controlled entirely by environment variables (see docstring on ensure_default_admin).
+"""
+
 import os
 
 from django.contrib.auth import get_user_model

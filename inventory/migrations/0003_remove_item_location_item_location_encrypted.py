@@ -1,3 +1,8 @@
+"""Migration that transitions Item.location storage to an encrypted-at-rest field.
+
+Presentation note: migrations describe database/data transitions; they are executed by Django during deploy/setup.
+"""
+
 from django.db import migrations, models
 
 

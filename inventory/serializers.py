@@ -1,3 +1,10 @@
+"""DRF serializers (JSON <-> Python) for the inventory API.
+
+Presentation notes:
+- Serializers control what fields the API returns and accepts.
+- This is also where we can selectively hide sensitive data.
+"""
+
 from rest_framework import serializers
 
 from django.contrib.auth.models import User

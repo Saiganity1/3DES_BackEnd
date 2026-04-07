@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Middleware utilities.
+
+Presentation notes:
+- Ensures a default admin exists once per process.
+- This is a safety net for demo environments where deploy/startup ordering can be unpredictable.
+"""
+
 import threading
 
 from inventory.default_admin import ensure_default_admin
