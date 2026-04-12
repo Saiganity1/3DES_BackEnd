@@ -16,6 +16,22 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ["username", "password", "first_name", "last_name", "email"]
 
+    def validate_email(self, value):
+        email = (value or "").strip()
+        if not email:
+            return ""
+
+        matches = User.objects.filter(email__iexact=email)
+        if not matches.exists():
+            return email
+
+        if matches.filter(is_active=False).exists():
+            raise serializers.ValidationError(
+                "Email is not available to use because it is taken down."
+            )
+
+        raise serializers.ValidationError("Email is already in use.")
+
     def create(self, validated_data):
         user = User(
             username=validated_data["username"],

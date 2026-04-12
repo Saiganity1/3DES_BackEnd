@@ -126,3 +126,31 @@ class ItemAuditFieldsTests(APITestCase):
 		self.assertEqual(res_patch.status_code, 200)
 		self.assertEqual(res_patch.json().get("updated_by"), "staff_two")
 		self.assertTrue(ActivityLog.objects.filter(action=ActivityLog.ACTION_ITEM_UPDATED, item_id=item_id).exists())
+
+
+class RegistrationTakenDownEmailTests(APITestCase):
+	def test_register_rejects_taken_down_email(self):
+		old = User.objects.create_user(
+			username="old_user",
+			password="pass12345",
+			email="taken.down@example.com",
+		)
+		old.is_active = False
+		old.save(update_fields=["is_active"])
+
+		res = self.client.post(
+			"/api/auth/register/",
+			{
+				"username": "new_user",
+				"password": "pass12345",
+				"email": "taken.down@example.com",
+				"first_name": "New",
+				"last_name": "User",
+			},
+			format="json",
+		)
+		self.assertEqual(res.status_code, 400)
+		data = res.json()
+		self.assertIn("email", data)
+		msg = " ".join([str(x) for x in (data.get("email") or [])])
+		self.assertIn("Email is not available to use because it is taken down", msg)
