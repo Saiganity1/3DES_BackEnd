@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import secrets
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -42,8 +44,15 @@ else:
     if DEBUG:
         SECRET_KEY = "django-insecure-o3ozzyyf4mz$=7)1@9dp3(r!=o43wzgomv%3j5zahwd7n*8d6j"
     else:
-        raise RuntimeError(
-            "SECRET_KEY must be set when DJANGO_DEBUG is false (production)."
+        # Production safety net: generate a strong random key instead of
+        # crashing the app. This avoids 500s on /admin when the Render env var
+        # wasn't configured.
+        # Note: Sessions/signed cookies will be invalidated on restart.
+        SECRET_KEY = secrets.token_urlsafe(64)
+        print(
+            "WARNING: SECRET_KEY is not set; generated a random SECRET_KEY for this process. "
+            "Set SECRET_KEY in your environment for stable admin sessions.",
+            file=sys.stderr,
         )
 
 _allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "").strip()
