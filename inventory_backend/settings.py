@@ -215,7 +215,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Render + Whitenoise
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -224,6 +224,10 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     }
 }
+
+# Prevent admin/template rendering from 500'ing if a static file isn't found in
+# the manifest (e.g., mis-ordered collectstatic/deploy steps).
+WHITENOISE_MANIFEST_STRICT = False
 
 
 # CORS
